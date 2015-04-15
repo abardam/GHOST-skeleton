@@ -57,7 +57,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PreBuildEvent>
-      <Command>copy /y "$(ProjectDir)\*.h" "$(CODE_DIR)\CvSkeleton-x86-vs12\include\"</Command>
+      <Command>mkdir "$(CODE_DIR)\CvSkeleton-x86-vs12\include" &amp; copy /y "$(ProjectDir)\*.h" "$(CODE_DIR)\CvSkeleton-x86-vs12\include\"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
