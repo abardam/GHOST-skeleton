@@ -33,19 +33,19 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="C:\Users\fabian-d\Documents\Visual Studio 2013\Projects\PROPERTY SHEETS\OpenCV_debug.props" />
+    <Import Project="$(PROPERTY_SHEETS_DIR)\OpenCV_debug.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="C:\Users\fabian-d\Documents\Visual Studio 2013\Projects\PROPERTY SHEETS\OpenCV.props" />
+    <Import Project="$(PROPERTY_SHEETS_DIR)\OpenCV.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>G:\code\CvSkeleton-x86-vs12\lib</OutDir>
+    <OutDir>$(CODE_DIR)\CvSkeleton-x86-vs12\lib</OutDir>
     <TargetName>$(ProjectName)d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>G:\code\CvSkeleton-x86-vs12\lib</OutDir>
+    <OutDir>$(CODE_DIR)\CvSkeleton-x86-vs12\lib</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -57,7 +57,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PreBuildEvent>
-      <Command>copy /y "G:\Visual Studio 2013\CV_SKELETON\CV_SKELETON\*.h" "$(CODE_DIR)\CvSkeleton-x86-vs12\include\"</Command>
+      <Command>copy /y "$(ProjectDir)\*.h" "$(CODE_DIR)\CvSkeleton-x86-vs12\include\"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -74,7 +74,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PreBuildEvent>
-      <Command>copy /y "G:\Visual Studio 2013\CV_SKELETON\CV_SKELETON\*.h" "$(CODE_DIR)\CvSkeleton-x86-vs12\include\"</Command>
+      <Command>mkdir "$(CODE_DIR)\CvSkeleton-x86-vs12\include" &amp; copy /y "$(ProjectDir)\*.h" "$(CODE_DIR)\CvSkeleton-x86-vs12\include\"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
