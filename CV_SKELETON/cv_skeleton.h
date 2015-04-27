@@ -147,3 +147,25 @@ void cv_draw_and_build_skeleton(SkeletonNodeHard * node, const cv::Mat& parent_t
 
 cv::Point project2D(cv::Vec4f pt, const cv::Mat& camera_matrix);
 cv::Vec4f get_origin(const cv::Mat& pt_m);
+
+//function for saving input frames
+bool save_input_frame(
+	const std::string& filename,
+	const double& time,
+	const cv::Mat& camera_pose,
+	const float& win_width,
+	const float& win_height,
+	const float& fovy,
+	const SkeletonNodeHard& snh,
+	const cv::Mat& color,
+	const cv::Mat& depth);
+
+//function for loading input frames
+bool load_input_frame(
+	const std::string& filename,
+	double& time,
+	cv::Mat& camera_pose,
+	cv::Mat& camera_matrix,
+	SkeletonNodeHard& snh,
+	cv::Mat& color,
+	cv::Mat& depth);

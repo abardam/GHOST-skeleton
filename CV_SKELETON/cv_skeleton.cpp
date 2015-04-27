@@ -1,5 +1,7 @@
 #include "cv_skeleton.h"
 
+//from assimp
+#define AI_DEG_TO_RAD(x) ((x)*0.0174532925f)
 
 //opencv serialization
 void write(cv::FileStorage& fs, const std::string& s, const SkeletonNodeHard& n){
@@ -92,13 +94,10 @@ cv::Vec4f get_origin(const cv::Mat& pt_m){
 }
 
 cv::Point project2D(cv::Vec4f pt, const cv::Mat& camera_matrix){
-	pt[0] /= pt[2];
-	pt[1] /= pt[2];
-	pt[2] = 1;
-	pt[3] = 1;
 	cv::Mat pt_m = camera_matrix * cv::Mat(pt);
-	int x = pt_m.ptr<float>(0)[0];
-	int y = pt_m.ptr<float>(1)[0];
+
+	int x = pt_m.ptr<float>(0)[0] / pt_m.ptr<float>(2)[0];
+	int y = pt_m.ptr<float>(1)[0] / pt_m.ptr<float>(2)[0];
 
 	return cv::Point(x, y);
 }
@@ -116,14 +115,6 @@ cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNode
 	parent_offset.ptr<float>(2)[3] = bpd.mNode1Offset[2];
 
 	cv::Mat parent_transform = parentEntry->second->mTempTransformation * parent_offset;
-	cv::Vec4f parent_pt = get_origin(parent_transform);
-
-	cv::Mat child_offset = cv::Mat::eye(4, 4, CV_32F);
-	child_offset.ptr<float>(0)[3] = bpd.mNode2Offset[0];
-	child_offset.ptr<float>(1)[3] = bpd.mNode2Offset[1];
-	child_offset.ptr<float>(2)[3] = bpd.mNode2Offset[2];
-
-	cv::Mat child_transform = childEntry->second->mTempTransformation * child_offset;
 	//cv::Mat childs_parent_transform = snhMap.find(childEntry->second->mParentName)->second->mTempTransformation;
 
 	//volume
@@ -136,6 +127,14 @@ cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNode
 	//volume_transform.ptr<float>(2)[3] = parent_pt(2);
 
 	if (length != 0 && external_parameters != 0){
+		cv::Vec4f parent_pt = get_origin(parent_transform);
+
+		cv::Mat child_offset = cv::Mat::eye(4, 4, CV_32F);
+		child_offset.ptr<float>(0)[3] = bpd.mNode2Offset[0];
+		child_offset.ptr<float>(1)[3] = bpd.mNode2Offset[1];
+		child_offset.ptr<float>(2)[3] = bpd.mNode2Offset[2];
+
+		cv::Mat child_transform = childEntry->second->mTempTransformation * child_offset;
 		*length = cv::norm(get_origin(external_parameters->inv()*child_transform) - get_origin(external_parameters->inv()*parent_transform)); //length value is affected by the root transform (which may include scaling)
 	}
 
@@ -160,4 +159,79 @@ void cv_draw_and_build_skeleton(SkeletonNodeHard * node, const cv::Mat& parent_t
 	for (auto it = node->mChildren.begin(); it != node->mChildren.end(); ++it){
 		cv_draw_and_build_skeleton(&*it, child_transform, camera_matrix, snhMap, image);
 	}
+}
+
+
+bool save_input_frame(
+	const std::string& filename,
+	const double& time,
+	const cv::Mat& camera_pose,
+	const float& win_width,
+	const float& win_height,
+	const float& fovy,
+	const SkeletonNodeHard& snh,
+	const cv::Mat& color,
+	const cv::Mat& depth){
+
+	cv::FileStorage fs(filename, cv::FileStorage::WRITE);
+
+	if (!fs.isOpened()) return false;
+
+	fs << "time" << time;
+	fs << "camera_extrinsic" << camera_pose;
+	//fs << "camera_intrinsic" << camera_intrinsic;
+	fs << "camera_intrinsic" << "{"
+		<< "width" << win_width << "height" << win_height << "fovy" << fovy
+		<< "}";
+	fs << "skeleton" << snh;
+	fs << "color" << color;
+	fs << "depth" << depth;
+	fs.release();
+
+	return true;
+}
+
+bool load_input_frame(
+	const std::string& filename,
+	double& time,
+	cv::Mat& camera_pose,
+	cv::Mat& camera_matrix,
+	SkeletonNodeHard& snh,
+	cv::Mat& color,
+	cv::Mat& depth){
+
+	float win_width;
+	float win_height;
+	float fovy;
+
+	cv::FileStorage fs(filename, cv::FileStorage::READ);
+
+	if (!fs.isOpened()) return false;
+
+	fs["time"] >> time;
+	fs["camera_extrinsic"] >> camera_pose;
+
+	if (fs["camera_intrinsic"].empty()){
+		fs["camera_intrinsic_mat"] >> camera_matrix;
+	}
+	else{
+		fs["camera_intrinsic"]["width"] >> win_width;
+		fs["camera_intrinsic"]["height"] >> win_height;
+		fs["camera_intrinsic"]["fovy"] >> fovy;
+
+		camera_matrix = cv::Mat::eye(4, 4, CV_32F);
+		camera_matrix.ptr<float>(0)[0] = -win_width / (2 * tan(AI_DEG_TO_RAD((fovy * (win_width / win_height) / 2.)))); //for some strange reason this is inaccurate for non-square aspect ratios
+		camera_matrix.ptr<float>(1)[1] = win_height / (2 * tan(AI_DEG_TO_RAD(fovy / 2.)));
+		camera_matrix.ptr<float>(0)[2] = win_width / 2 + 0.5;
+		camera_matrix.ptr<float>(1)[2] = win_height / 2 + 0.5;
+		//camera_intrinsic.ptr<float>(2)[2] = -1;
+	}
+
+	fs["skeleton"] >> snh;
+	fs["color"] >> color;
+	fs["depth"] >> depth;
+
+	fs.release();
+
+	return true;
 }
