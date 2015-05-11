@@ -8,6 +8,7 @@ void write(cv::FileStorage& fs, const std::string& s, const SkeletonNodeHard& n)
 	fs << "{" << "name" << n.mName
 		<< "parentname" << n.mParentName
 		<< "transformation" << n.mTransformation
+		<< "confidence" << n.confidence
 		<< "children" << "[";
 	for (auto it = n.mChildren.begin(); it != n.mChildren.end(); ++it){
 		write(fs, s, *it);
@@ -22,12 +23,19 @@ void read(const cv::FileNode& node, SkeletonNodeHard& n, const SkeletonNodeHard&
 		n.mName = (std::string)node["name"];
 		n.mParentName = (std::string)node["parentname"];
 		read(node["transformation"], n.mTransformation);
+		if (node["confidence"].empty()){
+			n.confidence = 1;
+		}
+		else{
+			n.confidence = (float)node["confidence"];
+		}
 		cv::FileNode children = node["children"];
 		if (children.type() != cv::FileNode::SEQ) return;
 		n.mChildren.clear();
 		for (auto it = children.begin(); it != children.end(); ++it){
-			n.mChildren.push_back(SkeletonNodeHard());
-			read(*it, n.mChildren.back(), default_value);
+			SkeletonNodeHard child_snh;
+			read(*it, child_snh, default_value);
+			n.mChildren.push_back(child_snh);
 		}
 	}
 }
@@ -37,14 +45,20 @@ void write(cv::FileStorage& fs, const std::string&, const BodyPartDefinition& n)
 		<< "node1name" << n.mNode1Name
 		<< "node2name" << n.mNode2Name
 		<< "color_r" << n.mColor[0] << "color_g" << n.mColor[1] << "color_b" << n.mColor[2]
-		<< "node1offset_x" << n.mNode1Offset[0]
-		<< "node1offset_y" << n.mNode1Offset[1]
-		<< "node1offset_z" << n.mNode1Offset[2]
-		<< "node2offset_x" << n.mNode2Offset[0]
-		<< "node2offset_y" << n.mNode2Offset[1]
-		<< "node2offset_z" << n.mNode2Offset[2]
+		<< "node1offset" << n.mNode1Offset
+		<< "node2offset" << n.mNode2Offset
 		<< "}";
 }
+
+
+cv::Mat _create_translation_mat(float x, float y, float z){
+	cv::Mat ret = cv::Mat::eye(4, 4, CV_32F);
+	ret.ptr<float>(0)[3] = x;
+	ret.ptr<float>(1)[3] = y;
+	ret.ptr<float>(2)[3] = z;
+	return ret;
+}
+
 void read(const cv::FileNode& node, BodyPartDefinition& n, const BodyPartDefinition& default_value){
 	if (node.empty()){
 		n = default_value;
@@ -56,12 +70,23 @@ void read(const cv::FileNode& node, BodyPartDefinition& n, const BodyPartDefinit
 		n.mColor[0] = (float)node["color_r"];
 		n.mColor[1] = (float)node["color_g"];
 		n.mColor[2] = (float)node["color_b"];
-		n.mNode1Offset[0] = (float)node["node1offset_x"];
-		n.mNode1Offset[1] = (float)node["node1offset_y"];
-		n.mNode1Offset[2] = (float)node["node1offset_z"];
-		n.mNode2Offset[0] = (float)node["node2offset_x"];
-		n.mNode2Offset[1] = (float)node["node2offset_y"];
-		n.mNode2Offset[2] = (float)node["node2offset_z"];
+
+		if (node["node1offset"].empty()){
+			//old style
+			float mNode1Offsetx = (float)node["node1offset_x"];
+			float mNode1Offsety = (float)node["node1offset_y"];
+			float mNode1Offsetz = (float)node["node1offset_z"];
+			float mNode2Offsetx = (float)node["node2offset_x"];
+			float mNode2Offsety = (float)node["node2offset_y"];
+			float mNode2Offsetz = (float)node["node2offset_z"];
+
+			n.mNode1Offset = _create_translation_mat(mNode1Offsetx, mNode1Offsety, mNode1Offsetz);
+			n.mNode2Offset = _create_translation_mat(mNode2Offsetx, mNode2Offsety, mNode2Offsetz);
+		}
+		else{
+			node["node1offset"] >> n.mNode1Offset;
+			node["node2offset"] >> n.mNode2Offset;
+		}
 	}
 }
 
@@ -102,17 +127,16 @@ cv::Point project2D(cv::Vec4f pt, const cv::Mat& camera_matrix){
 	return cv::Point(x, y);
 }
 
-cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNodeHardMap& snhMap, const cv::Mat * external_parameters, float * length){
+cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNodeHardMap& snhMap, const cv::Mat& camera_pose, float * length){
 	auto parentEntry = snhMap.find(bpd.mNode1Name);
 	if (parentEntry == snhMap.end()) return cv::Mat();
 
-	auto childEntry = snhMap.find(bpd.mNode2Name);
-	if (childEntry == snhMap.end()) return cv::Mat();
+	//cv::Mat parent_offset = cv::Mat::eye(4, 4, CV_32F);
+	//parent_offset.ptr<float>(0)[3] = bpd.mNode1Offset[0];
+	//parent_offset.ptr<float>(1)[3] = bpd.mNode1Offset[1];
+	//parent_offset.ptr<float>(2)[3] = bpd.mNode1Offset[2];
 
-	cv::Mat parent_offset = cv::Mat::eye(4, 4, CV_32F);
-	parent_offset.ptr<float>(0)[3] = bpd.mNode1Offset[0];
-	parent_offset.ptr<float>(1)[3] = bpd.mNode1Offset[1];
-	parent_offset.ptr<float>(2)[3] = bpd.mNode1Offset[2];
+	cv::Mat parent_offset = bpd.mNode1Offset;
 
 	cv::Mat parent_transform = parentEntry->second->mTempTransformation * parent_offset;
 	//cv::Mat childs_parent_transform = snhMap.find(childEntry->second->mParentName)->second->mTempTransformation;
@@ -126,38 +150,51 @@ cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNode
 	//volume_transform.ptr<float>(1)[3] = parent_pt(1);
 	//volume_transform.ptr<float>(2)[3] = parent_pt(2);
 
-	if (length != 0 && external_parameters != 0){
-		cv::Vec4f parent_pt = get_origin(parent_transform);
+	if (length != 0){
 
-		cv::Mat child_offset = cv::Mat::eye(4, 4, CV_32F);
-		child_offset.ptr<float>(0)[3] = bpd.mNode2Offset[0];
-		child_offset.ptr<float>(1)[3] = bpd.mNode2Offset[1];
-		child_offset.ptr<float>(2)[3] = bpd.mNode2Offset[2];
+		auto childEntry = snhMap.find(bpd.mNode2Name);
+		if (childEntry == snhMap.end()){
+			*length = 0;
+			
+		}
+		else{
+			cv::Vec4f parent_pt = get_origin(parent_transform);
 
-		cv::Mat child_transform = childEntry->second->mTempTransformation * child_offset;
-		*length = cv::norm(get_origin(external_parameters->inv()*child_transform) - get_origin(external_parameters->inv()*parent_transform)); //length value is affected by the root transform (which may include scaling)
+			//cv::Mat child_offset = cv::Mat::eye(4, 4, CV_32F);
+			//child_offset.ptr<float>(0)[3] = bpd.mNode2Offset[0];
+			//child_offset.ptr<float>(1)[3] = bpd.mNode2Offset[1];
+			//child_offset.ptr<float>(2)[3] = bpd.mNode2Offset[2];
+
+			cv::Mat child_offset = bpd.mNode2Offset;
+
+			cv::Mat child_transform = childEntry->second->mTempTransformation * child_offset;
+			*length = cv::norm(get_origin(camera_pose.inv()*child_transform) - get_origin(camera_pose.inv()*parent_transform)); //length value is affected by the root transform (which may include scaling)
+		}
 	}
 
-	return volume_transform;
+	return camera_pose * volume_transform;
 }
 
-void cv_draw_and_build_skeleton(SkeletonNodeHard * node, const cv::Mat& parent_transform, const cv::Mat& camera_matrix, SkeletonNodeHardMap * snhMap, cv::Mat& image){
+void cv_draw_and_build_skeleton(SkeletonNodeHard * node, const cv::Mat& parent_transform, const cv::Mat& camera_matrix, const cv::Mat& camera_pose, SkeletonNodeHardMap * snhMap, cv::Mat& image){
 
 	if (snhMap != NULL){
 		snhMap->insert(SkeletonNodeHardEntry(node->mName, node));
 	}
 
-	cv::Vec4f parent_pt = get_origin(parent_transform);
-	cv::Mat child_transform = parent_transform * node->mTransformation;
+	cv::Mat child_transform = node->mTransformation * parent_transform;
 
 	node->mTempTransformation = child_transform;
 
-	cv::Vec4f child_pt = get_origin(child_transform);
 
-	if (!image.empty()) cv::line(image, project2D(parent_pt, camera_matrix), project2D(child_pt, camera_matrix), cv::Scalar(255, 0, 0));
+	if (!image.empty()){
+		cv::Vec4f parent_pt = get_origin(camera_pose * parent_transform);
+		cv::Vec4f child_pt = get_origin(camera_pose * child_transform);
+
+		cv::line(image, project2D(parent_pt, camera_matrix), project2D(child_pt, camera_matrix), cv::Scalar(255, 0, 0));
+	}
 
 	for (auto it = node->mChildren.begin(); it != node->mChildren.end(); ++it){
-		cv_draw_and_build_skeleton(&*it, child_transform, camera_matrix, snhMap, image);
+		cv_draw_and_build_skeleton(&*it, child_transform, camera_matrix, camera_pose, snhMap, image);
 	}
 }
 
@@ -191,6 +228,31 @@ bool save_input_frame(
 	return true;
 }
 
+bool save_input_frame(
+	const std::string& filename,
+	const double& time,
+	const cv::Mat& camera_pose,
+	const cv::Mat& camera_matrix,
+	const SkeletonNodeHard& snh,
+	const cv::Mat& color,
+	const cv::Mat& depth){
+
+	cv::FileStorage fs(filename, cv::FileStorage::WRITE);
+
+	if (!fs.isOpened()) return false;
+
+	fs << "time" << time;
+	fs << "camera_extrinsic" << camera_pose;
+	//fs << "camera_intrinsic" << camera_intrinsic;
+	fs << "camera_intrinsic_mat" << camera_matrix;
+	fs << "skeleton" << snh;
+	fs << "color" << color;
+	fs << "depth" << depth;
+	fs.release();
+
+	return true;
+}
+
 bool load_input_frame(
 	const std::string& filename,
 	double& time,
@@ -204,7 +266,9 @@ bool load_input_frame(
 	float win_height;
 	float fovy;
 
-	cv::FileStorage fs(filename, cv::FileStorage::READ);
+	cv::FileStorage fs;
+	
+	fs.open(filename, cv::FileStorage::READ);
 
 	if (!fs.isOpened()) return false;
 
