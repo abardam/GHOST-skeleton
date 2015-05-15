@@ -31,18 +31,7 @@ typedef std::pair<const std::string, SkeletonNodeHard*> SkeletonNodeHardEntry;
 
 typedef std::vector<SkeletonNodeHard> SkeletonNodeAbsoluteVector;
 
-void absolutize_snh(const SkeletonNodeHard& rel, const cv::Mat& parent_transform, std::vector<SkeletonNodeHard>& abs){
-
-	SkeletonNodeHard snh;
-	snh.mTransformation = rel.mTransformation * parent_transform;
-	snh.mName = rel.mName;
-	snh.mParentName = rel.mParentName;
-	abs.push_back(snh);
-	for (int i = 0; i < rel.mChildren.size(); ++i){
-		absolutize_snh(rel.mChildren[i], snh.mTransformation, abs);
-	}
-
-}
+void absolutize_snh(const SkeletonNodeHard& rel, const cv::Mat& parent_transform, std::vector<SkeletonNodeHard>& abs);
 
 struct BodyPartDefinition{
 	std::string mNode1Name;

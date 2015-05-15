@@ -181,6 +181,19 @@ cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNode
 	return camera_pose * volume_transform;
 }
 
+void absolutize_snh(const SkeletonNodeHard& rel, const cv::Mat& parent_transform, std::vector<SkeletonNodeHard>& abs){
+
+	SkeletonNodeHard snh;
+	snh.mTransformation = rel.mTransformation * parent_transform;
+	snh.mName = rel.mName;
+	snh.mParentName = rel.mParentName;
+	abs.push_back(snh);
+	for (int i = 0; i < rel.mChildren.size(); ++i){
+		absolutize_snh(rel.mChildren[i], snh.mTransformation, abs);
+	}
+
+}
+
 void cv_draw_and_build_skeleton(SkeletonNodeHard * node, const cv::Mat& parent_transform, const cv::Mat& camera_matrix, const cv::Mat& camera_pose, SkeletonNodeHardMap * snhMap, cv::Mat& image){
 
 	if (snhMap != NULL){
