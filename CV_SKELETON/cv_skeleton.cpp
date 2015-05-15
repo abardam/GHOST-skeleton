@@ -127,6 +127,12 @@ cv::Point project2D(cv::Vec4f pt, const cv::Mat& camera_matrix){
 	return cv::Point(x, y);
 }
 
+
+SkeletonNodeHard * get_skeleton_node(const BodyPartDefinition& bpd, const SkeletonNodeHardMap& snhMap){
+	auto parentEntry = snhMap.find(bpd.mNode1Name);
+	return parentEntry->second;
+}
+
 cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNodeHardMap& snhMap, const cv::Mat& camera_pose, float * length){
 	auto parentEntry = snhMap.find(bpd.mNode1Name);
 	if (parentEntry == snhMap.end()) return cv::Mat();

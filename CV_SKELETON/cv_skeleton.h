@@ -29,6 +29,20 @@ struct SkeletonNodeHard{
 typedef std::map<const std::string, SkeletonNodeHard*> SkeletonNodeHardMap;
 typedef std::pair<const std::string, SkeletonNodeHard*> SkeletonNodeHardEntry;
 
+typedef std::vector<SkeletonNodeHard> SkeletonNodeAbsoluteVector;
+
+void absolutize_snh(const SkeletonNodeHard& rel, const cv::Mat& parent_transform, std::vector<SkeletonNodeHard>& abs){
+
+	SkeletonNodeHard snh;
+	snh.mTransformation = rel.mTransformation * parent_transform;
+	snh.mName = rel.mName;
+	snh.mParentName = rel.mParentName;
+	abs.push_back(snh);
+	for (int i = 0; i < rel.mChildren.size(); ++i){
+		absolutize_snh(rel.mChildren[i], snh.mTransformation, abs);
+	}
+
+}
 
 struct BodyPartDefinition{
 	std::string mNode1Name;
@@ -124,6 +138,8 @@ void read(const cv::FileNode& node, SkeletonNodeHard& n, const SkeletonNodeHard&
 //opencv serialization for body parts
 void write(cv::FileStorage& fs, const std::string&, const BodyPartDefinition& n);
 void read(const cv::FileNode& node, BodyPartDefinition& n, const BodyPartDefinition& default_value = BodyPartDefinition());
+
+SkeletonNodeHard * get_skeleton_node(const BodyPartDefinition& bpd, const SkeletonNodeHardMap& snhMap);
 
 //retrieves the global transform for the specified body part. you need to run cv_draw_and_build_skeleton first in order to set the snh transformations. also returns the length of the body part, if you want.
 cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNodeHardMap& snhMap, const cv::Mat& camera_pose, float * length = 0);
