@@ -133,6 +133,14 @@ SkeletonNodeHard * get_skeleton_node(const BodyPartDefinition& bpd, const Skelet
 	return parentEntry->second;
 }
 
+SkeletonNodeHard * get_skeleton_node(const BodyPartDefinition& bpd, SkeletonNodeAbsoluteVector& snav){
+	for (int i = 0; i < snav.size(); ++i){
+		if (bpd.mNode1Name == snav[i].mName){
+			return &snav[i];
+		}
+	}
+}
+
 cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNodeHardMap& snhMap, const cv::Mat& camera_pose, float * length){
 	auto parentEntry = snhMap.find(bpd.mNode1Name);
 	if (parentEntry == snhMap.end()) return cv::Mat();
@@ -181,17 +189,85 @@ cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNode
 	return camera_pose * volume_transform;
 }
 
-void absolutize_snh(const SkeletonNodeHard& rel, const cv::Mat& parent_transform, std::vector<SkeletonNodeHard>& abs){
+
+cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNodeAbsoluteVector& snav, const cv::Mat& camera_pose, float * length){
+	int snh_i = -1;
+	for (int i = 0; i < snav.size(); ++i){
+		if (snav[i].mName == bpd.mNode1Name){
+			snh_i = i;
+			break;
+		}
+	}
+
+	if (snh_i == -1) return cv::Mat();
+
+	cv::Mat parent_offset = bpd.mNode1Offset;
+
+	cv::Mat parent_transform = snav[snh_i].mTransformation * parent_offset;
+
+	//volume
+
+	cv::Mat volume_transform = parent_transform;
+
+	if (length != 0){
+
+		int snh_child_i = -1;
+		for (int i = 0; i < snav.size(); ++i){
+			if (snav[i].mName == bpd.mNode2Name){
+				snh_child_i = i;
+				break;
+			}
+		}
+
+		if (snh_child_i == -1){
+			*length = 0;
+
+		}
+		else{
+			cv::Vec4f parent_pt = get_origin(parent_transform);
+			cv::Mat child_offset = bpd.mNode2Offset;
+
+			cv::Mat child_transform = snav[snh_child_i].mTransformation * child_offset;
+			*length = cv::norm(get_origin(camera_pose.inv()*child_transform) - get_origin(camera_pose.inv()*parent_transform)); //length value is affected by the root transform (which may include scaling)
+		}
+	}
+
+	return camera_pose * volume_transform;
+}
+
+void absolutize_snh(const SkeletonNodeHard& rel, std::vector<SkeletonNodeHard>& abs, const cv::Mat& parent_transform){
 
 	SkeletonNodeHard snh;
 	snh.mTransformation = rel.mTransformation * parent_transform;
 	snh.mName = rel.mName;
 	snh.mParentName = rel.mParentName;
+	snh.confidence = rel.confidence;
 	abs.push_back(snh);
 	for (int i = 0; i < rel.mChildren.size(); ++i){
-		absolutize_snh(rel.mChildren[i], snh.mTransformation, abs);
+		absolutize_snh(rel.mChildren[i], abs, snh.mTransformation);
 	}
 
+}
+
+void relativize_snh(const std::vector<SkeletonNodeHard>& abs, SkeletonNodeHard& rel){
+	SkeletonNodeHardMap snhMap;
+	for (int i = 0; i < abs.size(); ++i){
+		SkeletonNodeHard snh = abs[i];
+		snh.mTempTransformation = snh.mTransformation.clone();
+
+		
+		if (snhMap.find(snh.mParentName) != snhMap.end()){
+			SkeletonNodeHard * parent = snhMap.find(snh.mParentName)->second;
+			snh.mTransformation = snh.mTempTransformation * parent->mTempTransformation.inv();
+			parent->mChildren.push_back(snh);
+			snhMap.insert(SkeletonNodeHardEntry(snh.mName, &parent->mChildren.back()));
+
+		}
+		else{
+			rel = snh;
+			snhMap.insert(SkeletonNodeHardEntry(snh.mName, &rel));
+		}
+	}
 }
 
 void cv_draw_and_build_skeleton(SkeletonNodeHard * node, const cv::Mat& parent_transform, const cv::Mat& camera_matrix, const cv::Mat& camera_pose, SkeletonNodeHardMap * snhMap, cv::Mat& image){

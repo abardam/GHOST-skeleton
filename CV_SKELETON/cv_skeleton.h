@@ -31,7 +31,8 @@ typedef std::pair<const std::string, SkeletonNodeHard*> SkeletonNodeHardEntry;
 
 typedef std::vector<SkeletonNodeHard> SkeletonNodeAbsoluteVector;
 
-void absolutize_snh(const SkeletonNodeHard& rel, const cv::Mat& parent_transform, std::vector<SkeletonNodeHard>& abs);
+void absolutize_snh(const SkeletonNodeHard& rel, std::vector<SkeletonNodeHard>& abs, const cv::Mat& parent_transform = cv::Mat::eye(4, 4, CV_32F));
+void relativize_snh(const std::vector<SkeletonNodeHard>& abs, SkeletonNodeHard& rel);
 
 struct BodyPartDefinition{
 	std::string mNode1Name;
@@ -129,9 +130,12 @@ void write(cv::FileStorage& fs, const std::string&, const BodyPartDefinition& n)
 void read(const cv::FileNode& node, BodyPartDefinition& n, const BodyPartDefinition& default_value = BodyPartDefinition());
 
 SkeletonNodeHard * get_skeleton_node(const BodyPartDefinition& bpd, const SkeletonNodeHardMap& snhMap);
+SkeletonNodeHard * get_skeleton_node(const BodyPartDefinition& bpd, SkeletonNodeAbsoluteVector& snav);
 
 //retrieves the global transform for the specified body part. you need to run cv_draw_and_build_skeleton first in order to set the snh transformations. also returns the length of the body part, if you want.
 cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNodeHardMap& snhMap, const cv::Mat& camera_pose, float * length = 0);
+
+cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNodeAbsoluteVector& snav, const cv::Mat& camera_pose, float * length = 0);
 
 void cv_draw_and_build_skeleton(SkeletonNodeHard * node, const cv::Mat& parent_transform, const cv::Mat& camera_matrix, const cv::Mat& camera_pose, SkeletonNodeHardMap * snhMap = NULL, cv::Mat& image = cv::Mat());
 
