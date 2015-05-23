@@ -270,7 +270,7 @@ void relativize_snh(const std::vector<SkeletonNodeHard>& abs, SkeletonNodeHard& 
 	}
 }
 
-void cv_draw_and_build_skeleton(SkeletonNodeHard * node, const cv::Mat& parent_transform, const cv::Mat& camera_matrix, const cv::Mat& camera_pose, SkeletonNodeHardMap * snhMap, cv::Mat& image){
+void cv_draw_and_build_skeleton(SkeletonNodeHard * node, const cv::Mat& parent_transform, const cv::Mat& camera_matrix, const cv::Mat& camera_pose, SkeletonNodeHardMap * snhMap, cv::Mat& image, const cv::Scalar& color){
 
 	if (snhMap != NULL){
 		snhMap->insert(SkeletonNodeHardEntry(node->mName, node));
@@ -285,14 +285,37 @@ void cv_draw_and_build_skeleton(SkeletonNodeHard * node, const cv::Mat& parent_t
 		cv::Vec4f parent_pt = get_origin(camera_pose * parent_transform);
 		cv::Vec4f child_pt = get_origin(camera_pose * child_transform);
 
-		cv::line(image, project2D(parent_pt, camera_matrix), project2D(child_pt, camera_matrix), cv::Scalar(255, 0, 0));
+		cv::line(image, project2D(parent_pt, camera_matrix), project2D(child_pt, camera_matrix), color);
 	}
 
 	for (auto it = node->mChildren.begin(); it != node->mChildren.end(); ++it){
-		cv_draw_and_build_skeleton(&*it, child_transform, camera_matrix, camera_pose, snhMap, image);
+		cv_draw_and_build_skeleton(&*it, child_transform, camera_matrix, camera_pose, snhMap, image, color);
 	}
 }
 
+void cv_draw_skeleton(cv::Mat& image, const SkeletonNodeAbsoluteVector& snav, const cv::Mat& camera_matrix, const cv::Mat& camera_pose, const cv::Scalar& color){
+	for (int i = 0; i < snav.size(); ++i){
+		int parent_id = -1;
+
+		for (int j = 0; j < snav.size(); ++j){
+			if (snav[j].mName == snav[i].mParentName){
+				parent_id = j;
+				break;
+			}
+		}
+
+		if (parent_id == -1) continue;
+
+		cv::Mat zero_pt(cv::Vec4f(0, 0, 0, 1));
+		cv::Mat parent_proj_pt = camera_matrix * camera_pose * snav[parent_id].mTransformation * zero_pt;
+		cv::Mat child_proj_pt = camera_matrix * camera_pose * snav[i].mTransformation * zero_pt;
+
+		cv::line(image, cv::Point(parent_proj_pt.ptr<float>(0)[0] / parent_proj_pt.ptr<float>(2)[0],
+			parent_proj_pt.ptr<float>(1)[0] / parent_proj_pt.ptr<float>(2)[0]),
+			cv::Point(child_proj_pt.ptr<float>(0)[0] / parent_proj_pt.ptr<float>(2)[0],
+			child_proj_pt.ptr<float>(1)[0] / parent_proj_pt.ptr<float>(2)[0]), color);
+	}
+}
 
 bool save_input_frame(
 	const std::string& filename,
@@ -303,7 +326,8 @@ bool save_input_frame(
 	const float& fovy,
 	const SkeletonNodeHard& snh,
 	const cv::Mat& color,
-	const cv::Mat& depth){
+	const cv::Mat& depth,
+	const int& facing){
 
 	cv::FileStorage fs(filename, cv::FileStorage::WRITE);
 
@@ -318,6 +342,7 @@ bool save_input_frame(
 	fs << "skeleton" << snh;
 	fs << "color" << color;
 	fs << "depth" << depth;
+	fs << "facing" << facing;
 	fs.release();
 
 	return true;
@@ -330,7 +355,8 @@ bool save_input_frame(
 	const cv::Mat& camera_matrix,
 	const SkeletonNodeHard& snh,
 	const cv::Mat& color,
-	const cv::Mat& depth){
+	const cv::Mat& depth,
+	const int& facing){
 
 	cv::FileStorage fs(filename, cv::FileStorage::WRITE);
 
@@ -343,6 +369,7 @@ bool save_input_frame(
 	fs << "skeleton" << snh;
 	fs << "color" << color;
 	fs << "depth" << depth;
+	fs << "facing" << facing;
 	fs.release();
 
 	return true;
@@ -355,7 +382,8 @@ bool load_input_frame(
 	cv::Mat& camera_matrix,
 	SkeletonNodeHard& snh,
 	cv::Mat& color,
-	cv::Mat& depth){
+	cv::Mat& depth,
+	int& facing){
 
 	float win_width;
 	float win_height;
@@ -389,6 +417,7 @@ bool load_input_frame(
 	fs["skeleton"] >> snh;
 	fs["color"] >> color;
 	fs["depth"] >> depth;
+	fs["facing"] >> facing;
 
 	fs.release();
 

@@ -5,6 +5,11 @@
 #define SNH_CONFIDENCE_MEDIUM .3
 #define SNH_CONFIDENCE_HIGH 1
 
+#define FACING_FRONT 0
+#define FACING_SIDE 1
+#define FACING_BACK 2
+
+
 //pointerless version of skeleton node for saving/loading
 struct SkeletonNodeHard{
 	std::vector<SkeletonNodeHard> mChildren;
@@ -137,7 +142,8 @@ cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNode
 
 cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNodeAbsoluteVector& snav, const cv::Mat& camera_pose, float * length = 0);
 
-void cv_draw_and_build_skeleton(SkeletonNodeHard * node, const cv::Mat& parent_transform, const cv::Mat& camera_matrix, const cv::Mat& camera_pose, SkeletonNodeHardMap * snhMap = NULL, cv::Mat& image = cv::Mat());
+void cv_draw_and_build_skeleton(SkeletonNodeHard * node, const cv::Mat& parent_transform, const cv::Mat& camera_matrix, const cv::Mat& camera_pose, SkeletonNodeHardMap * snhMap = NULL, cv::Mat& image = cv::Mat(), const cv::Scalar& color = cv::Scalar(0xff,0,0));
+void cv_draw_skeleton(cv::Mat& image, const SkeletonNodeAbsoluteVector& snav, const cv::Mat& camera_matrix, const cv::Mat& camera_pose, const cv::Scalar& color = cv::Scalar(0, 0xff, 0xff));
 
 cv::Point project2D(cv::Vec4f pt, const cv::Mat& camera_matrix);
 cv::Vec4f get_origin(const cv::Mat& pt_m);
@@ -152,7 +158,8 @@ bool save_input_frame(
 	const float& fovy,
 	const SkeletonNodeHard& snh,
 	const cv::Mat& color,
-	const cv::Mat& depth);
+	const cv::Mat& depth,
+	const int& facing);
 bool save_input_frame(
 	const std::string& filename,
 	const double& time,
@@ -160,7 +167,8 @@ bool save_input_frame(
 	const cv::Mat& camera_matrix,
 	const SkeletonNodeHard& snh,
 	const cv::Mat& color,
-	const cv::Mat& depth);
+	const cv::Mat& depth,
+	const int& facing);
 
 //function for loading input frames
 bool load_input_frame(
@@ -170,4 +178,5 @@ bool load_input_frame(
 	cv::Mat& camera_matrix,
 	SkeletonNodeHard& snh,
 	cv::Mat& color,
-	cv::Mat& depth);
+	cv::Mat& depth,
+	int& facing);
