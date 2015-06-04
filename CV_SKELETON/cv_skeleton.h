@@ -8,7 +8,7 @@
 #define FACING_FRONT 0
 #define FACING_SIDE 1
 #define FACING_BACK 2
-
+#define FACING_SIDE_BACK 3
 
 //pointerless version of skeleton node for saving/loading
 struct SkeletonNodeHard{
@@ -136,6 +136,7 @@ void read(const cv::FileNode& node, BodyPartDefinition& n, const BodyPartDefinit
 
 SkeletonNodeHard * get_skeleton_node(const BodyPartDefinition& bpd, const SkeletonNodeHardMap& snhMap);
 SkeletonNodeHard * get_skeleton_node(const BodyPartDefinition& bpd, SkeletonNodeAbsoluteVector& snav);
+SkeletonNodeHard * get_bodypart_skeleton_node(const std::string bodypart_name, const BodyPartDefinitionVector& bpdv, SkeletonNodeAbsoluteVector& snav);
 
 //retrieves the global transform for the specified body part. you need to run cv_draw_and_build_skeleton first in order to set the snh transformations. also returns the length of the body part, if you want.
 cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNodeHardMap& snhMap, const cv::Mat& camera_pose, float * length = 0);
@@ -158,6 +159,7 @@ bool save_input_frame(
 	const float& fovy,
 	const SkeletonNodeHard& snh,
 	const cv::Mat& color,
+	const cv::Mat& fullcolor,
 	const cv::Mat& depth,
 	const int& facing);
 bool save_input_frame(
@@ -167,6 +169,7 @@ bool save_input_frame(
 	const cv::Mat& camera_matrix,
 	const SkeletonNodeHard& snh,
 	const cv::Mat& color,
+	const cv::Mat& fullcolor,
 	const cv::Mat& depth,
 	const int& facing);
 
@@ -178,5 +181,6 @@ bool load_input_frame(
 	cv::Mat& camera_matrix,
 	SkeletonNodeHard& snh,
 	cv::Mat& color,
+	cv::Mat& fullcolor,
 	cv::Mat& depth,
 	int& facing);

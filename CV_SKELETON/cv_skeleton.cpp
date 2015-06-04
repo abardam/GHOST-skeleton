@@ -139,6 +139,24 @@ SkeletonNodeHard * get_skeleton_node(const BodyPartDefinition& bpd, SkeletonNode
 			return &snav[i];
 		}
 	}
+	return 0;
+}
+
+SkeletonNodeHard * get_bodypart_skeleton_node(const std::string bodypart_name, const BodyPartDefinitionVector& bpdv, SkeletonNodeAbsoluteVector& snav){
+	std::string node_name;
+	for (int i = 0; i < bpdv.size(); ++i){
+		if (bpdv[i].mBodyPartName == bodypart_name){
+			node_name = bpdv[i].mNode1Name;
+			break;
+		}
+	}
+
+	for (int i = 0; i < snav.size(); ++i){
+		if (node_name == snav[i].mName){
+			return &snav[i];
+		}
+	}
+	return 0;
 }
 
 cv::Mat get_bodypart_transform(const BodyPartDefinition& bpd, const SkeletonNodeHardMap& snhMap, const cv::Mat& camera_pose, float * length){
@@ -326,6 +344,7 @@ bool save_input_frame(
 	const float& fovy,
 	const SkeletonNodeHard& snh,
 	const cv::Mat& color,
+	const cv::Mat& fullcolor,
 	const cv::Mat& depth,
 	const int& facing){
 
@@ -341,6 +360,7 @@ bool save_input_frame(
 		<< "}";
 	fs << "skeleton" << snh;
 	fs << "color" << color;
+	fs << "fullcolor" << fullcolor;
 	fs << "depth" << depth;
 	fs << "facing" << facing;
 	fs.release();
@@ -355,6 +375,7 @@ bool save_input_frame(
 	const cv::Mat& camera_matrix,
 	const SkeletonNodeHard& snh,
 	const cv::Mat& color,
+	const cv::Mat& fullcolor,
 	const cv::Mat& depth,
 	const int& facing){
 
@@ -368,6 +389,7 @@ bool save_input_frame(
 	fs << "camera_intrinsic_mat" << camera_matrix;
 	fs << "skeleton" << snh;
 	fs << "color" << color;
+	fs << "fullcolor" << fullcolor;
 	fs << "depth" << depth;
 	fs << "facing" << facing;
 	fs.release();
@@ -382,6 +404,7 @@ bool load_input_frame(
 	cv::Mat& camera_matrix,
 	SkeletonNodeHard& snh,
 	cv::Mat& color,
+	cv::Mat& fullcolor,
 	cv::Mat& depth,
 	int& facing){
 
@@ -416,6 +439,7 @@ bool load_input_frame(
 
 	fs["skeleton"] >> snh;
 	fs["color"] >> color;
+	fs["fullcolor"] >> fullcolor;
 	fs["depth"] >> depth;
 	fs["facing"] >> facing;
 
