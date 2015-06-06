@@ -51,6 +51,7 @@ struct BodyPartDefinition{
 
 	std::string mBodyPartName;
 	float mColor[3];
+	cv::Vec3b mColoruc;
 
 	BodyPartDefinition(std::string name, std::string n1, std::string n2, float * color, const cv::Mat& n1o = cv::Mat(), const cv::Mat& n2o = cv::Mat()) :
 		mBodyPartName(name),
@@ -59,6 +60,9 @@ struct BodyPartDefinition{
 		mColor[0] = color[0];
 		mColor[1] = color[1];
 		mColor[2] = color[2];
+		mColoruc[0] = mColor[0] * 0xff;
+		mColoruc[1] = mColor[1] * 0xff;
+		mColoruc[2] = mColor[2] * 0xff;
 
 
 		if (n1o.empty()){
@@ -83,6 +87,9 @@ struct BodyPartDefinition{
 		mColor[0] = r;
 		mColor[1] = g;
 		mColor[2] = b;
+		mColoruc[0] = mColor[0] * 0xff;
+		mColoruc[1] = mColor[1] * 0xff;
+		mColoruc[2] = mColor[2] * 0xff;
 
 		if (n1o.empty()){
 			mNode1Offset = cv::Mat::eye(4, 4, CV_32F);
@@ -106,6 +113,9 @@ struct BodyPartDefinition{
 		mColor[0] = 1;
 		mColor[1] = 1;
 		mColor[2] = 1;
+		mColoruc[0] = mColor[0] * 0xff;
+		mColoruc[1] = mColor[1] * 0xff;
+		mColoruc[2] = mColor[2] * 0xff;
 
 		mNode1Offset = cv::Mat::eye(4, 4, CV_32F);
 		mNode2Offset = cv::Mat::eye(4, 4, CV_32F);
@@ -115,6 +125,9 @@ struct BodyPartDefinition{
 		mColor[0] = 1;
 		mColor[1] = 1;
 		mColor[2] = 1;
+		mColoruc[0] = mColor[0] * 0xff;
+		mColoruc[1] = mColor[1] * 0xff;
+		mColoruc[2] = mColor[2] * 0xff;
 
 		mNode1Offset = cv::Mat::eye(4, 4, CV_32F);
 		mNode2Offset = cv::Mat::eye(4, 4, CV_32F);
